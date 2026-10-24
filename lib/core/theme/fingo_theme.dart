@@ -7,6 +7,8 @@ abstract final class FingoColors {
   static const background = Color(0xFF101713);
   static const surface = Color(0xFF1A241E);
   static const elevatedSurface = Color(0xFF25332A);
+  static const lightBackground = Color(0xFFF5F8F6);
+  static const lightSurface = Color(0xFFFFFFFF);
 
   // Identidad visual verde.
   static const primary = Color(0xFF16865B);
@@ -105,6 +107,45 @@ abstract final class FingoTheme {
           fontWeight: FontWeight.w400,
           color: FingoColors.textSecondary,
         ),
+      ),
+    );
+  }
+
+  static ThemeData get light {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: FingoColors.primary,
+      brightness: Brightness.light,
+      surface: FingoColors.lightSurface,
+    );
+
+    return dark.copyWith(
+      brightness: Brightness.light,
+      colorScheme: colorScheme.copyWith(
+        primary: FingoColors.primary,
+        secondary: FingoColors.primary,
+        surface: FingoColors.lightSurface,
+        error: FingoColors.expense,
+      ),
+      scaffoldBackgroundColor: FingoColors.lightBackground,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: FingoColors.lightBackground,
+        foregroundColor: Color(0xFF17231C),
+      ),
+      cardTheme: const CardThemeData(
+        color: FingoColors.lightSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: Color(0xFFDCE7DF)),
+        ),
+      ),
+      inputDecorationTheme: dark.inputDecorationTheme.copyWith(
+        fillColor: FingoColors.lightSurface,
+        labelStyle: const TextStyle(color: Color(0xFF607066)),
+      ),
+      textTheme: dark.textTheme.apply(
+        bodyColor: const Color(0xFF17231C),
+        displayColor: const Color(0xFF17231C),
       ),
     );
   }

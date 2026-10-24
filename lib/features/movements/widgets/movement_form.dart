@@ -1,14 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/fingo_theme.dart';
 import '../models/financial_movement.dart';
+import '../models/category.dart';
+import '../services/movement_service.dart';
+import '../../../core/api/api_client.dart';
 
 /// Formulario para registrar un ingreso o un gasto.
 
 class MovementForm extends StatefulWidget {
-  const MovementForm({super.key, this.initialMovement});
+  const MovementForm({super.key, this.initialMovement, this.initialType});
 
   final FinancialMovement? initialMovement;
+  final MovementType? initialType;
 
   @override
   State<MovementForm> createState() => _MovementFormState();
@@ -20,7 +24,10 @@ class _MovementFormState extends State<MovementForm> {
   final _descriptionController = TextEditingController();
 
   late MovementType _type;
-  String? _category;
+  int? _categoryId;
+  List<FinancialCategory> _availableCategories = [];
+  bool _loadingCategories = true;
+  String? _categoryError;
   late DateTime? _date;
 
   @override
@@ -29,30 +36,28 @@ class _MovementFormState extends State<MovementForm> {
 
     final movement = widget.initialMovement;
 
-    _type = movement?.type ?? MovementType.expense;
-    _category = movement?.category;
+    _type = movement?.type ?? widget.initialType ?? MovementType.expense;
+    _categoryId = movement?.categoryId;
     _date = movement?.date ?? DateTime.now();
 
     if (movement != null) {
       _amountController.text = movement.amount.toStringAsFixed(2);
       _descriptionController.text = movement.description;
     }
+    _loadCategories();
   }
 
-  final Map<MovementType, List<String>> _categories = {
-    MovementType.income: ['Salario', 'Ventas', 'Inversiones', 'Otros ingresos'],
-    MovementType.expense: [
-      'Alimentación',
-      'Transporte',
-      'Vivienda',
-      'Salud',
-      'Entretenimiento',
-      'Otros gastos',
-    ],
-  };
-
+  Future<void> _loadCategories() async {
+    try {
+      await MovementService.instance.loadCategories();
+      if (mounted) setState(() { _availableCategories = MovementService.instance.categories.where((c) => c.active && c.type == (_type == MovementType.income ? 'ingreso' : 'gasto')).toList(); _loadingCategories = false; _categoryError = null; });
+    } on ApiException catch (error) {
+      if (mounted) setState(() { _categoryError = error.message; _loadingCategories = false; });
+    }
+  }
   @override
   void dispose() {
+
     _amountController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -91,7 +96,8 @@ class _MovementFormState extends State<MovementForm> {
       FinancialMovement(
         type: _type,
         amount: amount,
-        category: _category!,
+        category: _availableCategories.firstWhere((c) => c.id == _categoryId).name,
+        categoryId: _categoryId,
         date: _date!,
         description: _descriptionController.text.trim(),
       ),
@@ -145,8 +151,10 @@ class _MovementFormState extends State<MovementForm> {
                 onSelectionChanged: (selection) {
                   setState(() {
                     _type = selection.first;
-                    _category = null;
+                    _categoryId = null;
+                    _availableCategories = [];
                   });
+                  _loadCategories();
                 },
               ),
               const SizedBox(height: 18),
@@ -170,13 +178,13 @@ class _MovementFormState extends State<MovementForm> {
                   final amount = double.tryParse(normalized);
 
                   if (amount == null || !amount.isFinite || amount <= 0) {
-                    return 'Ingresa un monto válido mayor que cero';
+                    return 'Ingresa un monto vÃ¡lido mayor que cero';
                   }
 
                   if (normalized.split('.').length > 2 ||
                       (normalized.contains('.') &&
                           normalized.split('.').last.length > 2)) {
-                    return 'Usa máximo dos decimales';
+                    return 'Usa mÃ¡ximo dos decimales';
                   }
 
                   return null;
@@ -184,20 +192,12 @@ class _MovementFormState extends State<MovementForm> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: _category,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Categoría'),
-                items: _categories[_type]!
-                    .map(
-                      (category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => _category = value),
+                initialValue: _categoryId?.toString(),
+                decoration: InputDecoration(labelText: 'CategorÃ­a', helperText: _categoryError ?? (_loadingCategories ? 'Cargando categorÃ­asâ€¦' : null)),
+                items: _availableCategories.map((category) => DropdownMenuItem(value: category.id.toString(), child: Text(category.name))).toList(),
+                onChanged: _loadingCategories ? null : (value) => setState(() => _categoryId = int.tryParse(value ?? '')),
                 validator: (value) =>
-                    value == null ? 'Selecciona una categoría' : null,
+                    value == null ? 'Selecciona una categorÃ­a' : null,
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -223,13 +223,13 @@ class _MovementFormState extends State<MovementForm> {
                 maxLength: 200,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                  labelText: 'Descripción (opcional)',
-                  hintText: '¿En qué consiste el movimiento?',
+                  labelText: 'DescripciÃ³n (opcional)',
+                  hintText: 'Â¿En quÃ© consiste el movimiento?',
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
                   if ((value?.length ?? 0) > 200) {
-                    return 'Máximo 200 caracteres';
+                    return 'MÃ¡ximo 200 caracteres';
                   }
                   return null;
                 },

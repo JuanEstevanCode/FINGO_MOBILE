@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/fingo_theme.dart';
 import '../models/financial_movement.dart';
 import '../services/movement_service.dart';
 import '../widgets/movement_form.dart';
+import '../../../core/api/api_client.dart';
 
-/// Pantalla principal: presenta el balance y los movimientos registrados.
+/// Historial de movimientos registrados durante la sesión local.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -15,8 +15,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Por ahora los movimientos se conservan en memoria durante la sesión.
   final MovementService _movementService = MovementService();
+  bool _loading = true;
+  String? _loadError;
+
+  @override
+  void initState() { super.initState(); _loadMovements(); }
+
+  Future<void> _loadMovements() async {
+    try { await _movementService.load(); if (mounted) setState(() { _loading = false; _loadError = null; }); }
+    on ApiException catch (error) { if (mounted) setState(() { _loading = false; _loadError = error.message; }); }
+  }
 
   String _formatMoney(double amount) {
     final parts = amount.toStringAsFixed(2).split('.');
@@ -29,6 +38,12 @@ class _HomePageState extends State<HomePage> {
     return '\$ $formattedInteger,${parts[1]}';
   }
 
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
+
   Future<void> _openMovementForm() async {
     final movement = await showModalBottomSheet<FinancialMovement>(
       context: context,
@@ -39,9 +54,8 @@ class _HomePageState extends State<HomePage> {
 
     if (movement == null || !mounted) return;
 
-    setState(() {
-      _movementService.addMovement(movement);
-    });
+    try { await _movementService.addMovement(movement); if (mounted) setState(() {}); }
+    on ApiException catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message))); return; }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Movimiento registrado correctamente')),
@@ -54,55 +68,55 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'FINGO',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-          ),
-        ),
-        actions: const [
+        title: const Text('Movimientos'),
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 20),
-            child: Icon(Icons.account_circle_outlined, size: 28),
+            padding: const EdgeInsets.only(right: 20),
+            child: Text(
+              '${movements.length}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
         ],
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             Text(
-              'Hola, bienvenido',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Tus finanzas, más claras.',
+              'Historial financiero',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 24),
-            _buildBalanceCard(),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Movimientos',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(
-                  '${movements.length} registros',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              'Tus movimientos más recientes aparecen primero.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 14),
-            if (movements.isEmpty)
+            const SizedBox(height: 18),
+            _buildCompactBalance(),
+            const SizedBox(height: 22),
+            if (_loading) const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            else if (_loadError != null) Center(child: Column(children: [Text(_loadError!), TextButton(onPressed: _loadMovements, child: const Text('Reintentar'))]))
+            else if (movements.isEmpty)
               _buildEmptyState()
-            else
+            else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Todos los movimientos',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  Text(
+                    '${movements.length} registros',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               ...movements.map(_buildMovementTile),
-            const SizedBox(height: 24),
+            ],
+            const SizedBox(height: 16),
             SizedBox(
               height: 52,
               child: ElevatedButton.icon(
@@ -111,69 +125,48 @@ class _HomePageState extends State<HomePage> {
                 label: const Text('Registrar movimiento'),
               ),
             ),
-            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildCompactBalance() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [FingoColors.primary, Color(0xFF10543D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: FingoColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FingoColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text(
-            'Balance disponible',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: FingoColors.primary.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Icon(Icons.account_balance_wallet_outlined, color: FingoColors.accent),
           ),
-          const SizedBox(height: 10),
-          Text(
-            _formatMoney(_movementService.balance),
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Balance total', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 2),
+                Text(
+                  _formatMoney(_movementService.balance),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Icon(Icons.arrow_downward, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Ingresos\n${_formatMoney(_movementService.totalIncome)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    height: 1.6,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const Icon(Icons.arrow_upward, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Gastos\n${_formatMoney(_movementService.totalExpenses)}',
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    height: 1.6,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'API',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: FingoColors.accent),
           ),
         ],
       ),
@@ -190,16 +183,9 @@ class _HomePageState extends State<HomePage> {
       ),
       child: const Column(
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 42,
-            color: FingoColors.accent,
-          ),
+          Icon(Icons.receipt_long_outlined, size: 42, color: FingoColors.accent),
           SizedBox(height: 12),
-          Text(
-            'Aún no tienes movimientos',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
+          Text('Aún no tienes movimientos', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
           SizedBox(height: 8),
           Text(
             'Registra tu primer ingreso o gasto para comenzar.',
@@ -221,12 +207,10 @@ class _HomePageState extends State<HomePage> {
 
     if (updatedMovement == null || !mounted) return;
 
-    final updated = _movementService.updateMovement(movement, updatedMovement);
-
+    final updated = await _movementService.updateMovement(movement, updatedMovement);
     if (!updated) return;
 
     setState(() {});
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Movimiento actualizado correctamente')),
     );
@@ -237,9 +221,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar movimiento'),
-        content: const Text(
-          '¿Estás seguro de que deseas eliminar este movimiento?',
-        ),
+        content: const Text('¿Estás seguro de que deseas eliminar este movimiento?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -255,12 +237,10 @@ class _HomePageState extends State<HomePage> {
 
     if (confirmed != true || !mounted) return;
 
-    final deleted = _movementService.deleteMovement(movement);
-
+    final deleted = await _movementService.deleteMovement(movement);
     if (!deleted) return;
 
     setState(() {});
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Movimiento eliminado correctamente')),
     );
@@ -270,6 +250,7 @@ class _HomePageState extends State<HomePage> {
     final isIncome = movement.type == MovementType.income;
     final color = isIncome ? FingoColors.income : FingoColors.expense;
     final sign = isIncome ? '+' : '-';
+    final typeLabel = isIncome ? 'Ingreso' : 'Gasto';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -288,33 +269,23 @@ class _HomePageState extends State<HomePage> {
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              isIncome ? Icons.south_west : Icons.north_east,
-              color: color,
-            ),
+            child: Icon(isIncome ? Icons.south_west : Icons.north_east, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  movement.category,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+                Text(movement.category, style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text(
-                  movement.description.isEmpty
-                      ? '${isIncome ? 'Ingreso' : 'Gasto'} · '
-                            '${movement.date.day.toString().padLeft(2, '0')}/'
-                            '${movement.date.month.toString().padLeft(2, '0')}/'
-                            '${movement.date.year}'
-                      : movement.description,
-                  style: const TextStyle(
-                    color: FingoColors.textSecondary,
-                    fontSize: 12,
-                  ),
+                  movement.description.isEmpty ? typeLabel : '$typeLabel · ${movement.description}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: FingoColors.textSecondary, fontSize: 12),
                 ),
+                const SizedBox(height: 3),
+                Text(_formatDate(movement.date), style: const TextStyle(color: FingoColors.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -322,45 +293,17 @@ class _HomePageState extends State<HomePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '$sign${_formatMoney(movement.amount)}',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
+              Text('$sign${_formatMoney(movement.amount)}', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
               PopupMenuButton<String>(
                 tooltip: 'Acciones del movimiento',
                 icon: const Icon(Icons.more_vert, size: 20),
                 onSelected: (value) {
-                  if (value == 'edit') {
-                    _editMovement(movement);
-                  } else if (value == 'delete') {
-                    _confirmDeleteMovement(movement);
-                  }
+                  if (value == 'edit') _editMovement(movement);
+                  if (value == 'delete') _confirmDeleteMovement(movement);
                 },
                 itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined),
-                        SizedBox(width: 10),
-                        Text('Editar'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline),
-                        SizedBox(width: 10),
-                        Text('Eliminar'),
-                      ],
-                    ),
-                  ),
+                  PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined), SizedBox(width: 10), Text('Editar')])),
+                  PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline), SizedBox(width: 10), Text('Eliminar')])),
                 ],
               ),
             ],
