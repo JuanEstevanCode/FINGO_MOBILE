@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/fingo_theme.dart';
 import '../models/budget.dart';
@@ -33,9 +33,8 @@ class BudgetDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Card(child: Padding(padding: const EdgeInsets.all(20), child: Row(children: [Icon(over ? Icons.warning_amber_rounded : Icons.check_circle_outline, color: over ? FingoColors.expense : FingoColors.accent, size: 30), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(over ? 'Presupuesto excedido' : 'Disponible', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 4), Text(over ? 'Has superado el límite por ${_money(budget.remaining.abs())}.' : 'Te quedan ${_money(budget.remaining)} para este periodo.', style: Theme.of(context).textTheme.bodySmall)]))]))),
+          Card(child: Padding(padding: const EdgeInsets.all(20), child: Row(children: [Icon(over ? Icons.warning_amber_rounded : Icons.check_circle_outline, color: over ? FingoColors.expense : FingoColors.accent, size: 30), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(over ? 'Presupuesto excedido' : 'Disponible', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 4), Text(over ? 'Has superado el lÃ­mite por ${_money(budget.remaining.abs())}.' : 'Te quedan ${_money(budget.remaining)} para este periodo.', style: Theme.of(context).textTheme.bodySmall)]))]))),
           const SizedBox(height: 26),
-          Text('Los datos mostrados son de demostración local.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );

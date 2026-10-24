@@ -38,6 +38,7 @@ class _RegisterPageState extends State<RegisterPage> {
         'nombre': _nameController.text.trim(), 'correo': _emailController.text.trim(),
         'fecha_nacimiento': '${_birthDate!.year.toString().padLeft(4, '0')}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}', 'password': _passwordController.text,
       });
+      await ApiClient.instance.saveProfile(name: _nameController.text.trim(), email: _emailController.text.trim(), birthDate: '${_birthDate!.year.toString().padLeft(4, '0')}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}');
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cuenta creada. Inicia sesión para continuar.'))); Navigator.pop(context); }
     } on ApiException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));

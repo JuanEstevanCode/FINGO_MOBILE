@@ -37,6 +37,34 @@ class ApiClient {
     await _storage.delete(key: 'fingo_access_token');
   }
 
+  Future<void> saveProfile({required String name, required String email, required String birthDate}) async {
+    await _storage.write(key: 'fingo_profile_name', value: name);
+    await _storage.write(key: 'fingo_profile_email', value: email);
+    await _storage.write(key: 'fingo_profile_birth_date', value: birthDate);
+  }
+
+  Future<void> saveLoginEmail(String email) async {
+    final existingEmail = await _storage.read(key: 'fingo_profile_email');
+    if (existingEmail?.toLowerCase() != email.toLowerCase()) {
+      await _storage.delete(key: 'fingo_profile_name');
+      await _storage.delete(key: 'fingo_profile_birth_date');
+    }
+    await _storage.write(key: 'fingo_profile_email', value: email);
+  }
+
+  Future<Map<String, String?>> readProfile() async => {
+        'name': await _storage.read(key: 'fingo_profile_name'),
+        'email': await _storage.read(key: 'fingo_profile_email'),
+        'birthDate': await _storage.read(key: 'fingo_profile_birth_date'),
+      };
+
+  Future<void> clearSession() async {
+    await clearToken();
+    await _storage.delete(key: 'fingo_profile_name');
+    await _storage.delete(key: 'fingo_profile_email');
+    await _storage.delete(key: 'fingo_profile_birth_date');
+  }
+
   Future<dynamic> request(String method, String path, {
     Map<String, String>? query,
     Object? body,

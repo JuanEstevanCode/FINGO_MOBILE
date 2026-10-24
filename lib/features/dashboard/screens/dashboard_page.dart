@@ -72,7 +72,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            Text('Inicio', style: Theme.of(context).textTheme.headlineMedium),
+            Text('Tus finanzas, más claras', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 4),
             Text('Tus finanzas, más claras.', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 20),

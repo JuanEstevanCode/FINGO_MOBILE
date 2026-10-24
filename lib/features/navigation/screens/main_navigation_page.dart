@@ -14,6 +14,7 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _selectedIndex = 0;
+  final _budgetsKey = GlobalKey<BudgetsPageState>();
 
   late final List<Widget> _pages;
 
@@ -22,7 +23,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     super.initState();
     _pages = [
     DashboardPage(onOpenHistory: () => setState(() => _selectedIndex = 2)),
-      const BudgetsPage(),
+      BudgetsPage(key: _budgetsKey),
       const HomePage(),
       const ProfilePage(),
     ];
@@ -46,7 +47,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           ),
           child: NavigationBar(
             selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+            onDestinationSelected: (index) {
+              setState(() => _selectedIndex = index);
+              if (index == 1) _budgetsKey.currentState?.reload();
+            },
             backgroundColor: Colors.transparent,
             indicatorColor: const Color(0xFF236D4F),
             elevation: 0,

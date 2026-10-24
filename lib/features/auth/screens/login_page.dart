@@ -30,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final result = await ApiClient.instance.request('POST', '/auth/login', authenticated: false, body: {'correo': _emailController.text.trim(), 'password': _passwordController.text});
       await ApiClient.instance.saveToken((result as Map<String, dynamic>)['access_token'] as String);
+      await ApiClient.instance.saveLoginEmail(_emailController.text.trim());
       if (mounted) Navigator.pushReplacementNamed(context, '/app');
     } on ApiException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
